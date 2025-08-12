@@ -18,7 +18,7 @@ const BlogTitles = () => {
       {}
       <form onSubmit={onSubmitHandler} className='w-full max-w-lg p-4 bg-white rounded-lg
       border border-gray-200'>
-        <div>
+        <div className='flex items-center gap-3'>
           <Sparkles className='w-6 text-[#8E37EB]' />
           <h1 className='text-xl font-semibold'>AI Title Generator</h1>
         </div>

@@ -17,7 +17,7 @@ const RemoveBackground = () => {
       {}
       <form onSubmit={onSubmitHandler} className='w-full max-w-lg p-4 bg-white rounded-lg
       border border-gray-200'>
-        <div>
+        <div className='flex items-center gap-3'>
           <Sparkles className='w-6 text-[#FF4938]' />
           <h1 className='text-xl font-semibold'>Background Removal</h1>
         </div>
