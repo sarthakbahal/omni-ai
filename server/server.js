@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 import { clerkMiddleware, requireAuth } from '@clerk/express'
+import aiRouter from './routes/aiRoutes.js';
 
 const app = express(); // Initialize express app
 
@@ -15,6 +16,8 @@ app.use(clerkMiddleware()); //this is clerk middleware , used to get info from c
 app.get('/', (req,res) => res.send('Server is running')) // the parameters are the route and the calback funtion that will be executed when the route is hit, here the route is home route
 
 app.use(requireAuth()) // the home route should be accessible to anyone but after that all routes should be protected, so to do this we use the requireAuth middleware here so after this all routes will be protected
+
+app.use('/api/ai',aiRouter) // this is the ai router for all the ai related routes that the pages will use. Also here /api/ai is the prefix for the route of ai generations.
 
 const PORT = process.env.PORT || 3000; // Set the port to the value from environment variables or default to 3000
 
