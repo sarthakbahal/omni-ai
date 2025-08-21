@@ -11,6 +11,7 @@ import OpenAI from "openai";
 // function from a library like 'postgres.js'. This allows us to write clean, safe SQL queries
 // directly in our JavaScript code, and it helps prevent SQL injection attacks.
 import sql from "../configs/db.js";
+import axios from "axios";
 
 // We are creating a new instance of the AI client.
 const AI = new OpenAI({
@@ -79,10 +80,10 @@ export const generateArticle = async (req, res) => {
         // until the database query is complete. We're inserting a record of this creation
         // for logging, history, or analytics purposes.
         await sql`INSERT INTO creations (user_id, prompt, content, type) 
-        VALUES (${userId}, ${prompt}, ${content}, 'article') ` ;
+        VALUES (${userId}, ${prompt}, ${content}, 'article') `;
 
         // If the user is on a free plan, we need to update their usage count.
-        if(plan !== 'premium'){
+        if (plan !== 'premium') {
             // NOTE: `clerkClient` is used here but not imported at the top of the file.
             // This would cause a runtime error. You should add `import { clerkClient } from "@clerk/clerk-sdk-node";`
             // or a similar import at the top of the file.
@@ -95,7 +96,7 @@ export const generateArticle = async (req, res) => {
 
         // Finally, we send a successful response back to the client.
         // We send a JSON object containing a success flag and the generated content.
-        res.json({success : true, content})
+        res.json({ success: true, content })
 
     } catch (error) {
         // If any error occurred in the 'try' block, we catch it here.
@@ -106,4 +107,118 @@ export const generateArticle = async (req, res) => {
     }
 }
 
-// this is like creating a api for the ai generation feature , the endpoint for which is aiRoutes file.
+export const generateBlogTitle = async (req, res) => {
+
+    try {
+
+        const { userId } = req.auth();
+        const { prompt } = req.body;
+        const plan = req.plan;
+        const free_usage = req.free_usage;
+
+
+        if (plan !== 'premium' && free_usage >= 10) {
+            return res.json({ success: false, message: 'Free usage limit reached. Upgrade to premium for more requests.' })
+        }
+
+        const response = await AI.chat.completions.create({
+            model: "gemini-2.0-flash",
+            messages: [
+
+                {
+                    role: "user",
+                    content: prompt,
+                },
+
+            ],
+
+
+            temperature: 0.7,
+
+            max_tokens: 100,
+        });
+
+
+        const content = response.choices[0].message.content; // this is the response from the AI
+
+
+        await sql`INSERT INTO creations (user_id, prompt, content, type) 
+        VALUES (${userId}, ${prompt}, ${content}, 'blog-title') `;
+
+
+        if (plan !== 'premium') {
+
+            await clerkClient.users.updateMetadata(userId, {
+                privateMetadata: {
+                    free_usage: free_usage + 1
+                }
+            })
+        }
+
+
+        res.json({ success: true, content })
+
+    } catch (error) {
+
+        console.log(error.message);
+
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export const generateImage = async (req, res) => {
+
+    try {
+
+        const { userId } = req.auth();
+        const { prompt, publish } = req.body;
+        const plan = req.plan;
+
+
+
+        if (plan !== 'premium') {
+            return res.json({ success: false, message: 'This feature is only available for premium users.' })
+        }
+
+        const formData = new FormData()
+        formData.append('prompt', prompt)
+        
+        const {data} = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData , {
+            headers : {
+                 'x-api-key': process.env.CLIPDROP_API_KEY , 
+            },
+            responseType: "arraybuffer",
+        } )
+
+        const base64Image = `data:image/png;base64,${Buffer.from(data, 'binary').
+            toString('base64')
+        }`;
+
+        
+
+
+
+
+        await sql`INSERT INTO creations (user_id, prompt, content, type) 
+        VALUES (${userId}, ${prompt}, ${content}, 'blog-title') `;
+
+
+        if (plan !== 'premium') {
+
+            await clerkClient.users.updateMetadata(userId, {
+                privateMetadata: {
+                    free_usage: free_usage + 1
+                }
+            })
+        }
+
+
+        res.json({ success: true, content })
+
+    } catch (error) {
+
+        console.log(error.message);
+
+        res.json({ success: false, message: error.message });
+    }
+}
