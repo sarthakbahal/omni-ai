@@ -304,4 +304,54 @@ export const generateImageBackground = async (req, res) => {
 
         res.json({ success: false, message: error.message });
     }
-}
+} 
+
+export const removeImageObject = async (req, res) => {
+
+    try {
+
+        // Standard setup: get user info and request body.
+        const { userId } = req.auth();
+        const { object } = req.body; //we get the object that the user has input from the body 
+        const {image} = req.file; // we get the image from the user uploaded file and we input it here  
+        const plan = req.plan;
+
+
+
+        // This is a premium-only feature. We check the user's plan and return an error
+        // if they are not a premium user. This is a form of authorization.
+        if (plan !== 'premium') {
+            return res.json({ success: false, message: 'This feature is only available for premium users.' })
+        }
+
+        
+        // we use cloudinary's own function to remove the background 
+        // using transformation provided by the cloudinary DB we can easily remove the background from images
+
+        const { public_id } =  await cloudinary.uploader.upload(image.path)
+        // here we upload the image on cloudinary and get its id
+
+
+        //using cloudinary's URL function we transform the image by removing the specified object
+        const imageUrl = cloudinary.url(public_id,{
+            transformation:[{effect: `gen_remove:${object}`}],
+            resource_type: 'image'
+        })
+
+
+        
+        await sql`INSERT INTO creations (user_id, prompt, content, type) 
+        VALUES (${userId}, ${`Removed ${object} from image`}, ${imageUrl}, 'image') `;
+
+
+        // We send the public URL of the image back to the client. The frontend can now
+        // use this URL in an `<img>` tag to display the generated image.
+        res.json({ success: true, content: imageUrl })
+
+    } catch (error) {
+
+        console.log(error.message);
+
+        res.json({ success: false, message: error.message });
+    }
+} 
