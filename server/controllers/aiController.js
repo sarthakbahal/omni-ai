@@ -16,6 +16,8 @@ import axios from "axios";
 // specifically for updating user metadata.
 
 import {v2 as cloudinary} from 'cloudinary';
+import fs from 'fs';
+import pdf from "pdf-parse/lib/pdf-parse.js"
 
 // We are creating a new instance of the AI client.
 const AI = new OpenAI({
@@ -258,7 +260,7 @@ export const generateImage = async (req, res) => {
     }
 }
 
-export const generateImageBackground = async (req, res) => {
+export const removeImageBackground = async (req, res) => {
 
     try {
 
@@ -347,6 +349,59 @@ export const removeImageObject = async (req, res) => {
         // We send the public URL of the image back to the client. The frontend can now
         // use this URL in an `<img>` tag to display the generated image.
         res.json({ success: true, content: imageUrl })
+
+    } catch (error) {
+
+        console.log(error.message);
+
+        res.json({ success: false, message: error.message });
+    }
+} 
+
+export const resumeReview = async (req, res) => {
+
+    try {
+
+        // Standard setup: get user info and request body.
+        const { userId } = req.auth();
+        const resume = req.file;
+        const plan = req.plan;
+
+
+        if (plan !== 'premium') {
+            return res.json({ success: false, message: 'This feature is only available for premium users.' })
+        }
+
+        if(resume.size > 5 * 1024 * 1024){ // here we check the file size to see if it exceeds 5MB then return false
+            return res.json({ success: false, message: 'Resume file size exceeds 5MB limit.' });
+        }
+
+        const databuffer = fs.readFileSync(resume.path); // we create a databuffer to process the resume 
+
+        const pdfData = await pdf(databuffer); // we use the pdf-parse library to extract text from the pdf file
+
+        const prompt = `Review the following resume and provide super constructive and critical feedback on its strengths, weakness, and areas for improvement. Resume Content:\n\n${pdfData.text}`
+        // we send the pdf data to the AI model for analysis as text by attaching it to the prompt
+
+        const response = await AI.chat.completions.create({
+            model: "gemini-2.0-flash",
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+            temperature: 0.7,
+            max_tokens: 1000,
+        });
+
+        const content = response.choices[0].message.content;
+
+
+        await sql`INSERT INTO creations (user_id, prompt, content, type) 
+        VALUES (${userId},'Review the uploaded resume', ${content}, 'resume-review') `;
+
+        res.json({ success: true, content: content })
 
     } catch (error) {
 
