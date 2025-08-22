@@ -3,8 +3,11 @@ import cors from 'cors';
 import 'dotenv/config';
 import { clerkMiddleware, requireAuth } from '@clerk/express'
 import aiRouter from './routes/aiRoutes.js';
+import connectCloudinary from './configs/cloudinary.js';
 
 const app = express(); // Initialize express app
+
+await connectCloudinary();
 
 app.use(cors()); // Enable CORS for all routes , cors is like a middleware that allows cross-origin requests
 //this is useful when your frontend and backend are on different domains or ports

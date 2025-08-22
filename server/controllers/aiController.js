@@ -12,6 +12,10 @@ import OpenAI from "openai";
 // directly in our JavaScript code, and it helps prevent SQL injection attacks.
 import sql from "../configs/db.js";
 import axios from "axios";
+// We import the Clerk client to interact with the Clerk API for user management,
+// specifically for updating user metadata.
+
+import {v2 as cloudinary} from 'cloudinary';
 
 // We are creating a new instance of the AI client.
 const AI = new OpenAI({
@@ -107,8 +111,13 @@ export const generateArticle = async (req, res) => {
     }
 }
 
+// This controller function is responsible for generating just the title for a blog post.
+// It's another 'async' function because it also communicates with an external API and our database.
+// It follows a very similar pattern to `generateArticle`, demonstrating how you can create
+// specialized controller actions for different features.
 export const generateBlogTitle = async (req, res) => {
 
+    // We wrap our logic in a try...catch block for robust error handling.
     try {
 
         const { userId } = req.auth();
@@ -117,10 +126,14 @@ export const generateBlogTitle = async (req, res) => {
         const free_usage = req.free_usage;
 
 
+        // The same usage limit logic as in the previous function. Reusing logic like this
+        // is common, and for larger applications, you might move this check into a separate
+        // middleware to avoid repetition (this is known as the DRY principle - Don't Repeat Yourself).
         if (plan !== 'premium' && free_usage >= 10) {
             return res.json({ success: false, message: 'Free usage limit reached. Upgrade to premium for more requests.' })
         }
 
+        // We call the Gemini AI, but notice the prompt is specifically tailored to generate a title.
         const response = await AI.chat.completions.create({
             model: "gemini-2.0-flash",
             messages: [
@@ -133,21 +146,28 @@ export const generateBlogTitle = async (req, res) => {
             ],
 
 
+            // We might use different parameters for different tasks. Here, the temperature is the same,
+            // but the `max_tokens` is much lower because a title is short.
             temperature: 0.7,
 
             max_tokens: 100,
         });
 
 
+        // Extract the generated title from the AI's response.
         const content = response.choices[0].message.content; // this is the response from the AI
 
 
+        // We store this creation in our database. Notice the `type` is 'blog-title'.
+        // This allows us to easily filter and find different types of content the user has created.
         await sql`INSERT INTO creations (user_id, prompt, content, type) 
         VALUES (${userId}, ${prompt}, ${content}, 'blog-title') `;
 
 
+        // If the user is on a free plan, we increment their usage count in Clerk's metadata.
         if (plan !== 'premium') {
 
+            // Again, ensure `clerkClient` is imported at the top of the file.
             await clerkClient.users.updateMetadata(userId, {
                 privateMetadata: {
                     free_usage: free_usage + 1
@@ -156,7 +176,79 @@ export const generateBlogTitle = async (req, res) => {
         }
 
 
+        // Send the successful response with the generated title back to the client.
         res.json({ success: true, content })
+
+    } catch (error) {
+
+        // Log and return any errors that occur.
+        console.log(error.message);
+
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// This controller handles image generation, which introduces more complex interactions.
+export const generateImage = async (req, res) => {
+
+    try {
+
+        // Standard setup: get user info and request body.
+        const { userId } = req.auth();
+        const { prompt, publish } = req.body;
+        const plan = req.plan;
+
+
+
+        // This is a premium-only feature. We check the user's plan and return an error
+        // if they are not a premium user. This is a form of authorization.
+        if (plan !== 'premium') {
+            return res.json({ success: false, message: 'This feature is only available for premium users.' })
+        }
+
+        // To send data to the ClipDrop API (which is likely a 'multipart/form-data' endpoint),
+        // we use the FormData object. This is the standard way to send files or key-value data
+        // in a format that mimics a web form submission.
+        const formData = new FormData()
+        formData.append('prompt', prompt)
+        
+        // We're using 'axios', a popular library for making HTTP requests from Node.js.
+        // We are making a POST request to the ClipDrop text-to-image API endpoint.
+        const {data} = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData , {
+            // We must provide our API key in the request headers for authentication.
+            // This tells ClipDrop that we are authorized to use their service.
+            headers : {
+                 'x-api-key': process.env.CLIPDROP_API_KEY , 
+            },
+            // This is a critical option. It tells axios to expect the response as raw binary data
+            // (an 'arraybuffer') rather than trying to parse it as JSON text. An image is binary data.
+            responseType: "arraybuffer",
+        } )
+
+        // The `data` we receive is a Node.js Buffer containing the raw image bytes.
+        // To use this data easily (e.g., store it, display it), we convert it to a Base64 string.
+        // A "Data URL" is a URI scheme that provides a way to include data in-line.
+        // `data:image/png;base64,` tells the browser that the following string is a Base64-encoded PNG image.
+        const base64Image = `data:image/png;base64,${Buffer.from(data, 'binary').
+            toString('base64')
+        }`;
+
+        // We now upload the generated image to Cloudinary. Cloudinary is a cloud service for
+        // image and video management. We upload it there to get a permanent, public URL.
+        // We upload the Base64 Data URL directly. Cloudinary is smart enough to handle it.
+        const { secure_url } =  await cloudinary.uploader.upload(base64Image)
+
+
+        // In our database, we don't store the image itself. That would be very inefficient.
+        // Instead, we store the `secure_url` provided by Cloudinary. This is the standard practice.
+        // We also store the `publish` status, which might be used for a public gallery feature.
+        await sql`INSERT INTO creations (user_id, prompt, content, type, publish) 
+        VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false}) `;
+
+
+        // We send the public URL of the image back to the client. The frontend can now
+        // use this URL in an `<img>` tag to display the generated image.
+        res.json({ success: true, content: secure_url })
 
     } catch (error) {
 
@@ -166,54 +258,45 @@ export const generateBlogTitle = async (req, res) => {
     }
 }
 
-export const generateImage = async (req, res) => {
+export const generateImageBackground = async (req, res) => {
 
     try {
 
+        // Standard setup: get user info and request body.
         const { userId } = req.auth();
-        const { prompt, publish } = req.body;
+        const {image} = req.file;
         const plan = req.plan;
 
 
 
+        // This is a premium-only feature. We check the user's plan and return an error
+        // if they are not a premium user. This is a form of authorization.
         if (plan !== 'premium') {
             return res.json({ success: false, message: 'This feature is only available for premium users.' })
         }
 
-        const formData = new FormData()
-        formData.append('prompt', prompt)
         
-        const {data} = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData , {
-            headers : {
-                 'x-api-key': process.env.CLIPDROP_API_KEY , 
-            },
-            responseType: "arraybuffer",
-        } )
+        // we use cloudinary's own function to remove the background 
+        // using transformation provided by the cloudinary DB we can easily remove the background from images
 
-        const base64Image = `data:image/png;base64,${Buffer.from(data, 'binary').
-            toString('base64')
-        }`;
-
-        
-
-
-
-
-        await sql`INSERT INTO creations (user_id, prompt, content, type) 
-        VALUES (${userId}, ${prompt}, ${content}, 'blog-title') `;
-
-
-        if (plan !== 'premium') {
-
-            await clerkClient.users.updateMetadata(userId, {
-                privateMetadata: {
-                    free_usage: free_usage + 1
+        const { secure_url } =  await cloudinary.uploader.upload(image.path, {
+            transformation : [
+                {
+                    effect: 'background_removal',
+                    background_removal: 'remove_the_background'
                 }
-            })
-        }
+            ]
+        })
 
 
-        res.json({ success: true, content })
+        
+        await sql`INSERT INTO creations (user_id, prompt, content, type) 
+        VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image') `;
+
+
+        // We send the public URL of the image back to the client. The frontend can now
+        // use this URL in an `<img>` tag to display the generated image.
+        res.json({ success: true, content: secure_url })
 
     } catch (error) {
 
