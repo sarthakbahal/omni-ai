@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { clerkMiddleware, requireAuth } from '@clerk/express'
 import aiRouter from './routes/aiRoutes.js';
 import connectCloudinary from './configs/cloudinary.js';
+import userRouter from './routes/userRoutes.js';
 
 const app = express(); // Initialize express app
 
@@ -21,6 +22,7 @@ app.get('/', (req,res) => res.send('Server is running')) // the parameters are t
 app.use(requireAuth()) // the home route should be accessible to anyone but after that all routes should be protected, so to do this we use the requireAuth middleware here so after this all routes will be protected
 
 app.use('/api/ai',aiRouter) // this is the ai router for all the ai related routes that the pages will use. Also here /api/ai is the prefix for the route of ai generations.
+app.use('/api/user', userRouter) //this is the user router for all the user related routes that the pages will use.
 
 const PORT = process.env.PORT || 3000; // Set the port to the value from environment variables or default to 3000
 
