@@ -266,7 +266,7 @@ export const removeImageBackground = async (req, res) => {
 
         // Standard setup: get user info and request body.
         const { userId } = req.auth();
-        const {image} = req.file;
+        const image = req.file;
         const plan = req.plan;
 
 
