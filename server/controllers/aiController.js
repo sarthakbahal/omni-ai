@@ -315,7 +315,7 @@ export const removeImageObject = async (req, res) => {
         // Standard setup: get user info and request body.
         const { userId } = req.auth();
         const { object } = req.body; //we get the object that the user has input from the body 
-        const {image} = req.file; // we get the image from the user uploaded file and we input it here  
+        const image = req.file; // we get the image from the user uploaded file and we input it here  
         const plan = req.plan;
 
 
