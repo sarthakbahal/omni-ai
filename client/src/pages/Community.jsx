@@ -60,7 +60,7 @@ const Community = () => {
     }
   },[user])
   
-  return (
+  return !loading ? (
     <div className='flex-1 h-full flex flex-col gap-4 p-6'>
       Creations
       <div className='bg-white h-full w-full rounded-xl overflow-y-scroll'>
@@ -83,6 +83,11 @@ const Community = () => {
           </div>
         ))}
       </div>
+    </div>
+  ) : (
+    <div className='flex h-full justify-center items-center'>
+      <span className='w-10 h-10 my-1 rounded-full border-3 border-primary
+      border-t-transparent animate-spin'></span>
     </div>
   )
 }
