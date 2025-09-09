@@ -15,6 +15,7 @@ import axios from "axios";
 // We import the Clerk client to interact with the Clerk API for user management,
 // specifically for updating user metadata.
 
+import { clerkClient } from "@clerk/clerk-sdk-node";
 import {v2 as cloudinary} from 'cloudinary';
 import fs from 'fs';
 import pdf from "pdf-parse/lib/pdf-parse.js"
@@ -93,7 +94,7 @@ export const generateArticle = async (req, res) => {
             // NOTE: `clerkClient` is used here but not imported at the top of the file.
             // This would cause a runtime error. You should add `import { clerkClient } from "@clerk/clerk-sdk-node";`
             // or a similar import at the top of the file.
-            await clerkClient.users.updateMetadata(userId, {
+            await clerkClient.users.updateUserMetadata(userId, {
                 privateMetadata: {
                     free_usage: free_usage + 1
                 }
@@ -170,7 +171,7 @@ export const generateBlogTitle = async (req, res) => {
         if (plan !== 'premium') {
 
             // Again, ensure `clerkClient` is imported at the top of the file.
-            await clerkClient.users.updateMetadata(userId, {
+            await clerkClient.users.updateUserMetadata(userId, {
                 privateMetadata: {
                     free_usage: free_usage + 1
                 }
@@ -366,9 +367,10 @@ export const resumeReview = async (req, res) => {
         const { userId } = req.auth();
         const resume = req.file;
         const plan = req.plan;
+        const free_usage = req.free_usage;
 
 
-        if (plan !== 'premium') {
+        if (plan !== 'premium' && free_usage >= 10) {
             return res.json({ success: false, message: 'This feature is only available for premium users.' })
         }
 
@@ -401,7 +403,19 @@ export const resumeReview = async (req, res) => {
         await sql`INSERT INTO creations (user_id, prompt, content, type) 
         VALUES (${userId},'Review the uploaded resume', ${content}, 'resume-review') `;
 
+        if (plan !== 'premium') {
+            // NOTE: `clerkClient` is used here but not imported at the top of the file.
+            // This would cause a runtime error. You should add `import { clerkClient } from "@clerk/clerk-sdk-node";`
+            // or a similar import at the top of the file.
+            await clerkClient.users.updateUserMetadata(userId, {
+                privateMetadata: {
+                    free_usage: free_usage + 3
+                }
+            })
+        }
+
         res.json({ success: true, content: content })
+
 
     } catch (error) {
 
