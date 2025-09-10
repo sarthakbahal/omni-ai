@@ -5,6 +5,7 @@ import { Protect, useAuth } from '@clerk/clerk-react';
 import CreationItem from '../components/CreationItem';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
@@ -12,6 +13,7 @@ const Dashboard = () => {
 
   const [creations, setCreations] = useState([])
   const [loading, setLoading] = useState(true)
+  const { isDarkMode } = useDarkMode();
   const { getToken } = useAuth()
 
   const getDashboardData = async () => {

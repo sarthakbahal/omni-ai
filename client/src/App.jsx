@@ -12,27 +12,30 @@ import RemoveObject from './pages/RemoveObject.jsx'
 import Community from './pages/Community.jsx'
 import { useAuth } from '@clerk/clerk-react'
 import {Toaster} from 'react-hot-toast'
+import { DarkModeProvider } from './contexts/DarkModeContext';
 
 const App = () => {
   
   
   return (
-    <div>
-      <Toaster />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/ai" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="write-article" element={<WriteArticle />} />
-          <Route path="blog-titles" element={<BlogTitles />} />
-          <Route path="generate-images" element={<GenerateImages />} />
-          <Route path="review-resume" element={<ReviewResume />} />
-          <Route path="remove-background" element={<RemoveBackground />} />
-          <Route path="remove-object" element={<RemoveObject />} />
-          <Route path="community" element={<Community />} />
-        </Route>
-      </Routes>
-    </div>
+    <DarkModeProvider>
+      <div>
+        <Toaster />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/ai" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="write-article" element={<WriteArticle />} />
+            <Route path="blog-titles" element={<BlogTitles />} />
+            <Route path="generate-images" element={<GenerateImages />} />
+            <Route path="review-resume" element={<ReviewResume />} />
+            <Route path="remove-background" element={<RemoveBackground />} />
+            <Route path="remove-object" element={<RemoveObject />} />
+            <Route path="community" element={<Community />} />
+          </Route>
+        </Routes>
+      </div>
+    </DarkModeProvider>
   )
 }
 

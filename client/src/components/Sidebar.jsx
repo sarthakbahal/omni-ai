@@ -2,6 +2,7 @@ import React from 'react'
 import { Protect, useClerk, useUser } from '@clerk/clerk-react';
 import { Eraser, FileText, Hash, House, Image, LogOut, Scissors, SquarePen, Users } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { useDarkMode } from '../contexts/DarkModeContext'
 
 const navItems = [
     {to: '/ai',label: 'Dashboard', Icon: House},
@@ -18,15 +19,16 @@ const Sidebar = ({sidebar, setSidebar}) => {
     
     const {user} = useUser();
     const {signOut,openUserProfile} = useClerk();
+    const { isDarkMode } = useDarkMode();
     
     return (
-    <div className={`w-60 bg-white border-r border-gray-200 flex
-    flex-col items-center justify-between max-sm:absolute top-14
-    bottom-0 ${sidebar ? 'translate-x-0' : 'max-sm:-translate-x-full'} transition-all duration-300 ease-in-out `}>
+    <div className={`${sidebar ? 'block' : 'hidden'} sm:block min-w-72 border-r h-full ${
+      isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+    }`}>
         <div className='my-7 w-full'>
             <img src={user.imageUrl} alt="user avatar" className='w-13 rounded-full mx-auto' />
             <h1 className='mt-1 text-center'>{user.fullName}</h1>
-            <div className='px-6 mt-5 text-sm text-gray-600 font-medium'>
+            <div className={`${isDarkMode ? 'px-6 mt-5 text-sm text-gray-300 font-medium' : 'px-6 mt-5 text-sm text-gray-600 font-medium'}`}>
                 {navItems.map(({to,label,Icon}) => (
                     <NavLink key={to} to={to} end={to === '/ai'} onClick={() => setSidebar(false)} className={({isActive}) =>`px-3.5 py-2.5 flex
                     items-center gap-3 rounded ${isActive ? 'bg-gradient-to-r from-[#3C81F6] to-[#9234EA] text-white' 

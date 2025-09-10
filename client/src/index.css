@@ -17,3 +17,47 @@
 .cl-drawerRoot{
     z-index: 10;
 }
+
+/* ...existing styles... */
+
+/* Light mode (default) */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --nav-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+}
+
+/* Dark mode */
+.dark {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  --nav-bg: #1e293b;
+  --sidebar-bg: #1e293b;
+}
+
+/* Apply dark mode to body */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode utility classes */
+.dark-mode-bg {
+  background-color: var(--bg-primary);
+}
+
+.dark-mode-text {
+  color: var(--text-primary);
+}
+
+.dark-mode-border {
+  border-color: var(--border-color);
+}
